@@ -202,14 +202,11 @@ class HiveTableCatalog(sparkSession: SparkSession)
         tracksPartitionsInCatalog = conf.manageFilesourcePartitions,
         comment = Option(properties.get(TableCatalog.PROP_COMMENT)))
 
-      try {
-        catalog.createTable(tableDesc, ignoreIfExists = false)
-      } catch {
-        case _: TableAlreadyExistsException =>
-          throw new TableAlreadyExistsException(ident)
-      }
+      val ignoreIfExists = properties.get("ignoreIfExists").equalsIgnoreCase("true")
+      catalog.createTable(tableDesc, ignoreIfExists = ignoreIfExists)
 
-      loadTable(ident)
+      val table = loadTable(ident).asInstanceOf[HiveTable]
+      table.copy(catalogTable = table.catalogTable.copy(schema = schema))
     }
 
   override def alterTable(ident: Identifier, changes: TableChange*): Table =

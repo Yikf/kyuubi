@@ -32,6 +32,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.catalog.CatalogTable
 import org.apache.spark.sql.catalyst.catalog.CatalogTypes.TablePartitionSpec
+import org.apache.spark.sql.catalyst.expressions.AttributeReference
 import org.apache.spark.sql.connector.write.{BatchWrite, LogicalWriteInfo, Write}
 import org.apache.spark.sql.execution.datasources.{BasicWriteJobStatsTracker, WriteJobDescription}
 import org.apache.spark.sql.execution.datasources.v2.FileBatchWrite
@@ -63,8 +64,10 @@ case class HiveWrite(
   private val tableLocation = hiveTable.getDataLocation
 
   private val allColumns = info.schema().toAttributes
-  private val dataColumns = allColumns.take(allColumns.length - hiveTable.getPartCols.size())
-  private val partColumns = allColumns.takeRight(hiveTable.getPartCols.size())
+  private val dataColumns: Seq[AttributeReference] =
+    allColumns.filterNot(colName => table.partitionColumnNames.contains(colName.name))
+  private val partColumns: Seq[AttributeReference] =
+    allColumns.filter(colName => table.partitionColumnNames.contains(colName.name))
 
   lazy val tableDesc: TableDesc = new TableDesc(
     hiveTable.getInputFormatClass,

@@ -19,7 +19,6 @@ package org.apache.kyuubi.spark.connector.hive
 
 import java.net.URI
 import java.util
-import java.util.Collections
 
 import scala.collection.JavaConverters._
 import scala.util.Try
@@ -40,7 +39,7 @@ import org.apache.kyuubi.spark.connector.hive.read.HiveScan
 
 class HiveCatalogSuite extends KyuubiHiveTest {
 
-  val emptyProps: util.Map[String, String] = Collections.emptyMap[String, String]
+  val emptyProps: util.Map[String, String] = new util.HashMap[String, String]()
   val schema: StructType = new StructType()
     .add("id", IntegerType)
     .add("data", StringType)
@@ -193,6 +192,7 @@ class HiveCatalogSuite extends KyuubiHiveTest {
   test("createTable: table already exists") {
     assert(!catalog.tableExists(testIdent))
 
+    emptyProps.put("ignoreIfExists", "false")
     val table = catalog.createTable(testIdent, schema, Array.empty[Transform], emptyProps)
 
     val exc = intercept[TableAlreadyExistsException] {

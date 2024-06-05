@@ -17,7 +17,10 @@
 
 package org.apache.kyuubi.spark.connector.hive
 
+import scala.collection.mutable.ListBuffer
+
 import org.apache.spark.sql.{AnalysisException, Row, SparkSession}
+import org.apache.spark.sql.types.{DataTypes, StructField, StructType}
 
 class HiveQuerySuite extends KyuubiHiveTest {
 
@@ -257,6 +260,30 @@ class HiveQuerySuite extends KyuubiHiveTest {
            |""".stripMargin).collect()
 
       checkQueryResult(s"select * from $table", spark, Array(Row.apply("yi", "2022", "08")))
+    }
+  }
+
+  test("[KYUUBI #6403] Failed to insert into partitioned table with non-last partition column") {
+    val table = "hive.default.employee"
+    try {
+      val schema = StructType(Array(
+        StructField("name", DataTypes.StringType, nullable = false),
+        StructField("favorite_color", DataTypes.StringType, nullable = false),
+        StructField("favorite_numbers", DataTypes.StringType, nullable = false)))
+
+      val data = ListBuffer[Row]()
+      data += Row("Alyssa", "blue", "1")
+      data += Row("Ben", "red", "2")
+
+      val usersDF = spark.createDataFrame(spark.sparkContext.parallelize(data), schema)
+      usersDF.write.partitionBy("favorite_color").saveAsTable(table)
+
+      checkQueryResult(
+        s"select * from $table",
+        spark,
+        Array(Row.apply("Alyssa", "1", "blue"), Row.apply("Ben", "2", "red")))
+    } finally {
+      spark.sql(s"DROP TABLE IF EXISTS $table")
     }
   }
 
